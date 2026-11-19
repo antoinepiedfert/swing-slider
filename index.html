@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -44,42 +44,52 @@
   svg { width:100%; height:auto; display:block; }
   svg text { fill:var(--muted); font-size:12px; }
   .tip { color:var(--muted); font-size:.9rem; margin-top:.5rem; }
-  /* Mobile : slider vertical (100 % en haut, 0 % en bas) */
+  /* Mobile: vertical slider (100% at top, 0% at bottom) */
+  .end { display:none; }
   @media (max-width: 600px) {
-    .sl { display:flex; justify-content:center; gap:.75rem; height:min(55vh, 420px); min-height:240px; }
-    input[type=range] { writing-mode:vertical-lr; direction:rtl; width:56px; height:100%; touch-action:none; }
-    .scale { flex-direction:column-reverse; }
+    .end { display:block; text-align:center; font-weight:700; font-size:1.2rem; letter-spacing:.02em; margin:.6rem 0; }
+    .end.top { color:var(--ok); } .end.bottom { color:var(--danger); }
+    .sl { --h:max(240px, min(48vh, 380px)); --t:112px; --th:26px; display:flex; justify-content:center; align-items:flex-start; gap:1rem; height:var(--h); }
+    /* rotation: works in all mobile browsers; the track is a thick pill filled up to the thumb */
+    input[type=range] { -webkit-appearance:none; appearance:none; background:transparent; flex:none; width:var(--h); height:var(--t); margin:0 calc(var(--t) - var(--h)) 0 0; transform:translateY(var(--h)) rotate(-90deg); transform-origin:top left; touch-action:none; }
+    input[type=range]::-webkit-slider-runnable-track { height:var(--t); border-radius:var(--t); background:linear-gradient(90deg,#0e7f90,var(--accent)) left/calc((100% - var(--th)) * var(--p,0) + var(--th) / 2) 100% no-repeat, var(--line); }
+    input[type=range]::-moz-range-track { height:var(--t); border-radius:var(--t); background:linear-gradient(90deg,#0e7f90,var(--accent)) left/calc((100% - var(--th)) * var(--p,0) + var(--th) / 2) 100% no-repeat, var(--line); }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:var(--th); height:calc(var(--t) + 14px); margin-top:-7px; border-radius:14px; background:#fff; border:3px solid var(--accent); box-shadow:0 2px 8px rgba(0,0,0,.3); }
+    input[type=range]::-moz-range-thumb { width:calc(var(--th) - 6px); height:calc(var(--t) + 8px); border-radius:14px; background:#fff; border:3px solid var(--accent); box-shadow:0 2px 8px rgba(0,0,0,.3); }
+    .scale { flex-direction:column-reverse; height:100%; }
   }
 </style>
 </head>
 <body>
-<nav><b>Does It Swing?</b><button id="histBtn">Historique</button></nav>
+<nav><b>Does It Swing?</b><button id="histBtn">History</button></nav>
 <main>
   <div class="card" id="recorder">
     <div class="row" style="margin-bottom:1rem">
-      <input type="text" id="name" placeholder="Nom de l'enregistrement" aria-label="Nom de l'enregistrement">
-      <button class="btn set" id="setName">Valider le nom</button>
+      <input type="text" id="name" placeholder="Recording name" aria-label="Recording name">
+      <button class="btn set" id="setName">Set name</button>
     </div>
-    <div class="status" id="status">Prêt</div>
+    <div class="status" id="status">Ready</div>
     <div class="big"><span id="val">0</span>%</div>
     <div class="timer" id="timer">00:00.0</div>
+    <div class="end top">It swings</div>
     <div class="sl">
-      <input type="range" id="slider" min="0" max="100" step="1" value="0" aria-label="Pourcentage">
-      <div class="scale"><span>0 %</span><span>50 %</span><span>100 %</span></div>
+      <input type="range" id="slider" min="0" max="100" step="1" value="0" aria-label="Percentage">
+      <div class="scale"><span>0%</span><span>50%</span><span>100%</span></div>
     </div>
+    <div class="end bottom">It doesn't swing</div>
     <div class="row" style="margin-top:1rem">
       <button class="btn start" id="start">Start</button>
       <button class="btn stop" id="stop" disabled>Stop</button>
       <button class="btn reset" id="reset" disabled>Reset</button>
-      <button class="btn chart" id="chart" disabled>Afficher le graphe</button>
+      <button class="btn chart" id="chart" disabled>Show chart</button>
     </div>
-    <div class="tip">Pendant l'enregistrement, bougez le curseur : la valeur est mesurée 10 fois par seconde.</div>
+    <div class="tip">While recording, move the slider: the value is sampled 10 times per second.</div>
   </div>
-  <div class="card" id="history" hidden><h2>Historique</h2><div id="histList"></div></div>
+  <div class="card" id="history" hidden><h2>History</h2><div id="histList"></div></div>
 </main>
 
 <dialog id="modal">
-  <div class="mh"><span id="mtitle">Graphe</span><button id="mclose" aria-label="Fermer">×</button></div>
+  <div class="mh"><span id="mtitle">Chart</span><button id="mclose" aria-label="Close">×</button></div>
   <div class="mb"><div id="plot"></div></div>
 </dialog>
 
@@ -102,7 +112,7 @@
     $("reset").disabled = state !== "stopped";
     $("chart").disabled = state !== "stopped" || samples.length < 2;
     $("status").className = "status" + (rec ? " rec" : "");
-    $("status").textContent = rec ? "Enregistrement" : state === "stopped" ? "Arrêté" : "Prêt";
+    $("status").textContent = rec ? "Recording" : state === "stopped" ? "Stopped" : "Ready";
   }
 
   function sample() {
@@ -111,7 +121,8 @@
     $("timer").textContent = fmt(t);
   }
 
-  $("slider").addEventListener("input", e => { $("val").textContent = e.target.value; });
+  const paint = () => { $("val").textContent = $("slider").value; $("slider").style.setProperty("--p", $("slider").value / 100); };
+  $("slider").addEventListener("input", paint); paint();
 
   $("start").onclick = () => {
     samples = []; t0 = performance.now(); state = "recording";
@@ -120,7 +131,7 @@
   $("stop").onclick = () => {
     clearInterval(tick); sample(); state = "stopped";
     const list = load();
-    name = $("name").value.trim() || "Sans titre";
+    name = $("name").value.trim() || "Untitled";
     list.unshift({ id: Date.now(), name, date: new Date().toISOString(), samples });
     save(list.slice(0, 50)); renderHistory(); ui();
   };
@@ -145,14 +156,14 @@
     }
     const pts = data.map(s => `${x(s.t).toFixed(1)},${y(s.v).toFixed(1)}`).join(" ");
     const area = `${x(0)},${y(0)} ${pts} ${x(data[data.length - 1].t)},${y(0)}`;
-    $("mtitle").textContent = "Graphe : " + title;
+    $("mtitle").textContent = "Chart: " + title;
     $("plot").innerHTML =
-      `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Pourcentage en fonction du temps">${g}
+      `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Percentage over time">${g}
        <polygon points="${area}" fill="#17a2b8" opacity=".15"/>
        <polyline points="${pts}" fill="none" stroke="#17a2b8" stroke-width="2.5" stroke-linejoin="round"/></svg>`;
     $("modal").showModal();
   }
-  $("chart").onclick = () => plot(samples, name || $("name").value.trim() || "Sans titre");
+  $("chart").onclick = () => plot(samples, name || $("name").value.trim() || "Untitled");
   $("mclose").onclick = () => $("modal").close();
   $("modal").addEventListener("click", e => { if (e.target === $("modal")) $("modal").close(); });
 
@@ -160,7 +171,7 @@
   function renderHistory() {
     const list = load(), box = $("histList");
     box.textContent = "";
-    if (!list.length) { box.textContent = "Aucun enregistrement."; return; }
+    if (!list.length) { box.textContent = "No recordings."; return; }
     for (const r of list) {
       const dur = r.samples.length ? fmt(r.samples[r.samples.length - 1].t) : "00:00.0";
       const avg = r.samples.length ? Math.round(r.samples.reduce((a, s) => a + s.v, 0) / r.samples.length) : 0;
@@ -168,12 +179,12 @@
       const info = document.createElement("div");
       const b = document.createElement("b"); b.textContent = r.name;
       const sm = document.createElement("small");
-      sm.textContent = `${new Date(r.date).toLocaleString("fr-FR")} · ${dur} · moyenne ${avg} %`;
+      sm.textContent = `${new Date(r.date).toLocaleString("en-US")} · ${dur} · average ${avg}%`;
       info.append(b, sm);
       const acts = document.createElement("div");
-      const show = document.createElement("button"); show.textContent = "Graphe";
+      const show = document.createElement("button"); show.textContent = "Chart";
       show.onclick = () => r.samples.length > 1 && plot(r.samples, r.name);
-      const del = document.createElement("button"); del.textContent = "Suppr."; del.className = "del";
+      const del = document.createElement("button"); del.textContent = "Delete"; del.className = "del";
       del.onclick = () => { save(load().filter(x => x.id !== r.id)); renderHistory(); };
       acts.append(show, del); row.append(info, acts); box.append(row);
     }
