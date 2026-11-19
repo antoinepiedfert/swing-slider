@@ -44,6 +44,12 @@
   svg { width:100%; height:auto; display:block; }
   svg text { fill:var(--muted); font-size:12px; }
   .tip { color:var(--muted); font-size:.9rem; margin-top:.5rem; }
+  /* Mobile : slider vertical (100 % en haut, 0 % en bas) */
+  @media (max-width: 600px) {
+    .sl { display:flex; justify-content:center; gap:.75rem; height:min(55vh, 420px); min-height:240px; }
+    input[type=range] { writing-mode:vertical-lr; direction:rtl; width:56px; height:100%; touch-action:none; }
+    .scale { flex-direction:column-reverse; }
+  }
 </style>
 </head>
 <body>
@@ -57,8 +63,10 @@
     <div class="status" id="status">Prêt</div>
     <div class="big"><span id="val">0</span>%</div>
     <div class="timer" id="timer">00:00.0</div>
-    <input type="range" id="slider" min="0" max="100" step="1" value="0" aria-label="Pourcentage">
-    <div class="scale"><span>0 %</span><span>50 %</span><span>100 %</span></div>
+    <div class="sl">
+      <input type="range" id="slider" min="0" max="100" step="1" value="0" aria-label="Pourcentage">
+      <div class="scale"><span>0 %</span><span>50 %</span><span>100 %</span></div>
+    </div>
     <div class="row" style="margin-top:1rem">
       <button class="btn start" id="start">Start</button>
       <button class="btn stop" id="stop" disabled>Stop</button>
