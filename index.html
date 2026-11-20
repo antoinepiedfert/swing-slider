@@ -27,6 +27,7 @@
   .timer { text-align:center; color:var(--muted); margin-bottom:1rem; font-variant-numeric:tabular-nums; }
   input[type=range] { width:100%; height:44px; accent-color:var(--accent); cursor:pointer; }
   .scale { display:flex; justify-content:space-between; color:var(--muted); font-size:.85rem; }
+  .avg { text-align:center; font-size:1.3rem; font-weight:700; color:var(--accent); margin:-.5rem 0 1rem; }
   .status { text-align:center; font-weight:700; margin-bottom:.5rem; }
   .rec { color:var(--danger); } .rec::before { content:"● "; animation:blink 1s infinite; }
   @keyframes blink { 50% { opacity:.2; } }
@@ -46,17 +47,17 @@
   .tip { color:var(--muted); font-size:.9rem; margin-top:.5rem; }
   /* Mobile: vertical slider (100% at top, 0% at bottom) */
   .end { display:none; }
-  @media (max-width: 600px) {
-    .end { display:block; text-align:center; font-weight:700; font-size:1.2rem; letter-spacing:.02em; margin:.6rem 0; }
-    .end.top { color:var(--ok); } .end.bottom { color:var(--danger); }
-    .sl { --h:max(240px, min(48vh, 380px)); --t:112px; --th:26px; display:flex; justify-content:center; align-items:flex-start; gap:1rem; height:var(--h); }
+  @media all {
+    html.m .end { display:block; text-align:center; font-weight:700; font-size:1.2rem; letter-spacing:.02em; margin:.6rem 0; }
+    html.m .end.top { color:var(--ok); } html.m .end.bottom { color:var(--danger); }
+    html.m .sl { --h:max(240px, min(48vh, 380px)); --t:112px; --th:26px; display:flex; justify-content:center; align-items:flex-start; gap:1rem; height:var(--h); }
     /* rotation: works in all mobile browsers; the track is a thick pill filled up to the thumb */
-    input[type=range] { -webkit-appearance:none; appearance:none; background:transparent; flex:none; width:var(--h); height:var(--t); margin:0 calc(var(--t) - var(--h)) 0 0; transform:translateY(var(--h)) rotate(-90deg); transform-origin:top left; touch-action:none; }
-    input[type=range]::-webkit-slider-runnable-track { height:var(--t); border-radius:var(--t); background:linear-gradient(90deg,#0e7f90,var(--accent)) left/calc((100% - var(--th)) * var(--p,0) + var(--th) / 2) 100% no-repeat, var(--line); }
-    input[type=range]::-moz-range-track { height:var(--t); border-radius:var(--t); background:linear-gradient(90deg,#0e7f90,var(--accent)) left/calc((100% - var(--th)) * var(--p,0) + var(--th) / 2) 100% no-repeat, var(--line); }
-    input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:var(--th); height:calc(var(--t) + 14px); margin-top:-7px; border-radius:14px; background:#fff; border:3px solid var(--accent); box-shadow:0 2px 8px rgba(0,0,0,.3); }
-    input[type=range]::-moz-range-thumb { width:calc(var(--th) - 6px); height:calc(var(--t) + 8px); border-radius:14px; background:#fff; border:3px solid var(--accent); box-shadow:0 2px 8px rgba(0,0,0,.3); }
-    .scale { flex-direction:column-reverse; height:100%; }
+    html.m input[type=range] { -webkit-appearance:none; appearance:none; background:transparent; flex:none; width:var(--h); height:var(--t); margin:0 calc(var(--t) - var(--h)) 0 0; transform:translateY(var(--h)) rotate(-90deg); transform-origin:top left; touch-action:none; }
+    html.m input[type=range]::-webkit-slider-runnable-track { height:var(--t); border-radius:var(--t); background:linear-gradient(90deg,#0e7f90,var(--accent)) left/calc((100% - var(--th)) * var(--p,0) + var(--th) / 2) 100% no-repeat, var(--line); }
+    html.m input[type=range]::-moz-range-track { height:var(--t); border-radius:var(--t); background:linear-gradient(90deg,#0e7f90,var(--accent)) left/calc((100% - var(--th)) * var(--p,0) + var(--th) / 2) 100% no-repeat, var(--line); }
+    html.m input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:var(--th); height:calc(var(--t) + 14px); margin-top:-7px; border-radius:14px; background:#fff; border:3px solid var(--accent); box-shadow:0 2px 8px rgba(0,0,0,.3); }
+    html.m input[type=range]::-moz-range-thumb { width:calc(var(--th) - 6px); height:calc(var(--t) + 8px); border-radius:14px; background:#fff; border:3px solid var(--accent); box-shadow:0 2px 8px rgba(0,0,0,.3); }
+    html.m .scale { flex-direction:column-reverse; height:100%; }
   }
 </style>
 </head>
@@ -71,6 +72,7 @@
     <div class="status" id="status">Ready</div>
     <div class="big"><span id="val">0</span>%</div>
     <div class="timer" id="timer">00:00.0</div>
+    <div class="avg" id="avg" hidden></div>
     <div class="end top">It swings</div>
     <div class="sl">
       <input type="range" id="slider" min="0" max="100" step="1" value="0" aria-label="Percentage">
@@ -94,6 +96,8 @@
 </dialog>
 
 <script>
+// Detect phones/tablets regardless of CSS width (landscape, "desktop site" mode, etc.)
+(() => { const small = Math.min(screen.width, screen.height) <= 820; const touch = navigator.maxTouchPoints > 0 || matchMedia("(pointer: coarse)").matches; if (innerWidth <= 600 || (small && touch)) document.documentElement.classList.add("m"); })();
 (() => {
   const $ = id => document.getElementById(id);
   const KEY = "swing-slider-history";
@@ -105,6 +109,15 @@
   const save = list => { try { localStorage.setItem(KEY, JSON.stringify(list)); } catch {} };
   const fmt = ms => { const s = ms / 1000; return String(Math.floor(s / 60)).padStart(2, "0") + ":" + (s % 60).toFixed(1).padStart(4, "0"); };
 
+  // Time-weighted average over the whole recording (area under the curve / duration)
+  function average(s) {
+    if (s.length < 2) return s.length ? s[0].v : 0;
+    let area = 0;
+    for (let i = 1; i < s.length; i++) area += (s[i].t - s[i - 1].t) * (s[i].v + s[i - 1].v) / 2;
+    const dur = s[s.length - 1].t - s[0].t;
+    return dur > 0 ? area / dur : s[0].v;
+  }
+
   function ui() {
     const rec = state === "recording";
     $("start").disabled = rec;
@@ -112,6 +125,8 @@
     $("reset").disabled = state !== "stopped";
     $("chart").disabled = state !== "stopped" || samples.length < 2;
     $("status").className = "status" + (rec ? " rec" : "");
+    $("avg").hidden = state !== "stopped";
+    $("avg").textContent = "Average: " + average(samples).toFixed(1) + "%";
     $("status").textContent = rec ? "Recording" : state === "stopped" ? "Stopped" : "Ready";
   }
 
@@ -174,7 +189,7 @@
     if (!list.length) { box.textContent = "No recordings."; return; }
     for (const r of list) {
       const dur = r.samples.length ? fmt(r.samples[r.samples.length - 1].t) : "00:00.0";
-      const avg = r.samples.length ? Math.round(r.samples.reduce((a, s) => a + s.v, 0) / r.samples.length) : 0;
+      const avg = r.samples.length ? average(r.samples).toFixed(1) : 0;
       const row = document.createElement("div"); row.className = "hist-item";
       const info = document.createElement("div");
       const b = document.createElement("b"); b.textContent = r.name;
