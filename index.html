@@ -49,16 +49,18 @@
   .credit b { color:var(--fg); }
   /* Mobile: vertical slider (100% at top, 0% at bottom) */
   .end { display:none; }
+  html.m { --fill1:#0e7f90; --fill2:#17a2b8; --mtrack:var(--line); --mthumb:#17a2b8; }
+  @media (prefers-color-scheme: dark) { html.m { --fill1:#2bb8cf; --fill2:#7fe3f3; --mtrack:#343a40; --mthumb:#7fe3f3; } }
   @media all {
     html.m .end { display:block; text-align:center; font-weight:700; font-size:1.2rem; letter-spacing:.02em; margin:.6rem 0; }
     html.m .end.top { color:var(--ok); } html.m .end.bottom { color:var(--danger); }
     html.m .sl { --h:max(240px, min(48vh, 380px)); --t:112px; --th:26px; display:flex; justify-content:center; align-items:flex-start; gap:1rem; height:var(--h); }
     /* rotation: works in all mobile browsers; the track is a thick pill filled up to the thumb */
     html.m input[type=range] { -webkit-appearance:none; appearance:none; background:transparent; flex:none; width:var(--h); height:var(--t); margin:0 calc(var(--t) - var(--h)) 0 0; transform:translateY(var(--h)) rotate(-90deg); transform-origin:top left; touch-action:none; }
-    html.m input[type=range]::-webkit-slider-runnable-track { height:var(--t); border-radius:var(--t); background:linear-gradient(90deg,#0e7f90,var(--accent)) left/calc((100% - var(--th)) * var(--p,0) + var(--th) / 2) 100% no-repeat, var(--line); }
-    html.m input[type=range]::-moz-range-track { height:var(--t); border-radius:var(--t); background:linear-gradient(90deg,#0e7f90,var(--accent)) left/calc((100% - var(--th)) * var(--p,0) + var(--th) / 2) 100% no-repeat, var(--line); }
-    html.m input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:var(--th); height:calc(var(--t) + 14px); margin-top:-7px; border-radius:14px; background:#fff; border:3px solid var(--accent); box-shadow:0 2px 8px rgba(0,0,0,.3); }
-    html.m input[type=range]::-moz-range-thumb { width:calc(var(--th) - 6px); height:calc(var(--t) + 8px); border-radius:14px; background:#fff; border:3px solid var(--accent); box-shadow:0 2px 8px rgba(0,0,0,.3); }
+    html.m input[type=range]::-webkit-slider-runnable-track { height:var(--t); border-radius:var(--t); background:linear-gradient(90deg,var(--fill1),var(--fill2)) left/calc((100% - var(--th)) * var(--p,0) + var(--th) / 2) 100% no-repeat, var(--mtrack); }
+    html.m input[type=range]::-moz-range-track { height:var(--t); border-radius:var(--t); background:linear-gradient(90deg,var(--fill1),var(--fill2)) left/calc((100% - var(--th)) * var(--p,0) + var(--th) / 2) 100% no-repeat, var(--mtrack); }
+    html.m input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:var(--th); height:calc(var(--t) + 14px); margin-top:-7px; border-radius:14px; background:#fff; border:3px solid var(--mthumb); box-shadow:0 2px 8px rgba(0,0,0,.3); }
+    html.m input[type=range]::-moz-range-thumb { width:calc(var(--th) - 6px); height:calc(var(--t) + 8px); border-radius:14px; background:#fff; border:3px solid var(--mthumb); box-shadow:0 2px 8px rgba(0,0,0,.3); }
     html.m .scale { flex-direction:column-reverse; height:100%; }
     /* Fill the whole viewport height: the card stretches and the slider takes the leftover space */
     html.m body { min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; }
