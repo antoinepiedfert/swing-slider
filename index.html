@@ -8,12 +8,16 @@
 <style>
   :root { --bg:#f8f9fa; --fg:#212529; --card:#fff; --line:#dee2e6; --accent:#17a2b8; --danger:#dc3545; --ok:#28a745; --muted:#6c757d; }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#16181b; --fg:#e9ecef; --card:#212529; --line:#343a40; --muted:#9aa3ab; }
+    :root:not([data-theme="light"]) { --bg:#16181b; --fg:#e9ecef; --card:#212529; --line:#343a40; --muted:#9aa3ab; }
   }
+  :root[data-theme="dark"] { --bg:#16181b; --fg:#e9ecef; --card:#212529; --line:#343a40; --muted:#9aa3ab; }
+  :root { color-scheme: light; } :root[data-theme="dark"] { color-scheme: dark; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; } }
   * { box-sizing: border-box; }
   body { margin:0; font-family:Raleway,system-ui,sans-serif; background:var(--bg); color:var(--fg); }
   nav { background:var(--card); border-bottom:1px solid var(--line); padding:.8rem 1rem; display:flex; justify-content:space-between; align-items:center; }
   nav b { font-size:1.25rem; }
+  nav button#themeBtn { font-size:1.2rem; margin-right:.6rem; }
   nav button { background:none; border:0; color:var(--accent); font:inherit; cursor:pointer; }
   main { max-width:720px; margin:0 auto; padding:1rem; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:1rem; margin-bottom:1rem; }
@@ -50,7 +54,8 @@
   /* Mobile: vertical slider (100% at top, 0% at bottom) */
   .end { display:none; }
   html.m { --fill1:#0e7f90; --fill2:#17a2b8; --mtrack:var(--line); --mthumb:#17a2b8; }
-  @media (prefers-color-scheme: dark) { html.m { --fill1:#2bb8cf; --fill2:#7fe3f3; --mtrack:#5a636c; --mthumb:#7fe3f3; } }
+  @media (prefers-color-scheme: dark) { html.m:not([data-theme="light"]) { --fill1:#2bb8cf; --fill2:#7fe3f3; --mtrack:#5a636c; --mthumb:#7fe3f3; } }
+  html.m[data-theme="dark"] { --fill1:#2bb8cf; --fill2:#7fe3f3; --mtrack:#5a636c; --mthumb:#7fe3f3; }
   @media all {
     html.m .end { display:block; text-align:center; font-weight:700; font-size:1.2rem; letter-spacing:.02em; margin:.6rem 0; }
     html.m .end.top { color:var(--ok); } html.m .end.bottom { color:var(--danger); }
@@ -77,7 +82,7 @@
 </style>
 </head>
 <body>
-<nav><b>Does It Swing?</b><button id="histBtn">History</button></nav>
+<nav><b>Does It Swing?</b><span><button id="themeBtn" aria-label="Toggle light/dark theme" title="Toggle light/dark theme">◐</button> <button id="histBtn">History</button></span></nav>
 <main>
   <div class="card" id="recorder">
     <div class="row" style="margin-bottom:1rem">
@@ -256,6 +261,14 @@
       acts.append(show, del); row.append(info, acts); box.append(row);
     }
   }
+  // Theme toggle: overrides the system preference, remembered in localStorage
+  const root = document.documentElement, THEME = "swing-slider-theme";
+  const isDark = () => root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  try { const t = localStorage.getItem(THEME); if (t) root.dataset.theme = t; } catch {}
+  $("themeBtn").onclick = () => {
+    const t = isDark() ? "light" : "dark"; root.dataset.theme = t;
+    try { localStorage.setItem(THEME, t); } catch {}
+  };
   $("histBtn").onclick = () => { const h = $("history"); h.hidden = !h.hidden; if (!h.hidden) renderHistory(); };
 
   ui();
