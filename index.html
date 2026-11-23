@@ -95,7 +95,7 @@
 
 <dialog id="modal">
   <div class="mh"><span id="mtitle">Chart</span><button id="mclose" aria-label="Close">×</button></div>
-  <div class="mb"><div id="plot"></div></div>
+  <div class="mb"><div id="plot"></div><button class="btn chart" id="exportPng" style="margin-top:1rem;width:100%">Download PNG</button></div>
 </dialog>
 
 <script>
@@ -159,28 +159,59 @@
   $("setName").onclick = () => { name = $("name").value.trim(); $("name").blur(); };
 
   // --- Chart (SVG, step plot) ---
-  function plot(data, title) {
-    const W = 900, H = 420, m = { l: 48, r: 16, t: 16, b: 36 };
+  // ex = true: standalone SVG for PNG export (explicit colors, white background, title)
+  function chartSVG(data, title, ex) {
+    const W = 900, H = ex ? 480 : 420, m = { l: 48, r: 16, t: ex ? 56 : 16, b: 36 };
     const tMax = Math.max(data[data.length - 1].t, 1);
     const x = t => m.l + (t / tMax) * (W - m.l - m.r);
     const y = v => H - m.b - (v / 100) * (H - m.t - m.b);
+    const grid = ex ? "#999" : "currentColor", txt = ex ? ' fill="#555" font-size="12"' : "";
+    const avg = average(data);
     let g = "";
     for (let v = 0; v <= 100; v += 20)
-      g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="currentColor" opacity=".12"/><text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${v}%</text>`;
-    const n = 6;
-    for (let i = 0; i <= n; i++) {
-      const t = (tMax * i) / n;
-      g += `<text x="${x(t)}" y="${H - 12}" text-anchor="middle">${(t / 1000).toFixed(1)} s</text>`;
+      g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="${grid}" opacity=".25"/><text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end"${txt}>${v}%</text>`;
+    for (let i = 0; i <= 6; i++) {
+      const t = (tMax * i) / 6;
+      g += `<text x="${x(t)}" y="${H - 12}" text-anchor="middle"${txt}>${(t / 1000).toFixed(1)} s</text>`;
     }
     const pts = data.map(s => `${x(s.t).toFixed(1)},${y(s.v).toFixed(1)}`).join(" ");
     const area = `${x(0)},${y(0)} ${pts} ${x(data[data.length - 1].t)},${y(0)}`;
+    const ay = y(avg).toFixed(1);
+    const head = ex ? `<rect width="${W}" height="${H}" fill="#fff"/><text x="${m.l}" y="30" font-size="20" font-weight="700" fill="#212529">${esc(title)}</text><text x="${W - m.r}" y="30" text-anchor="end" font-size="20" font-weight="700" fill="#d9480f">Average: ${avg.toFixed(1)}%</text>` : "";
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="Raleway, Arial, sans-serif" role="img" aria-label="Percentage over time">${head}${g}
+      <polygon points="${area}" fill="#17a2b8" opacity=".15"/>
+      <polyline points="${pts}" fill="none" stroke="#17a2b8" stroke-width="2.5" stroke-linejoin="round"/>
+      <line x1="${m.l}" x2="${W - m.r}" y1="${ay}" y2="${ay}" stroke="#d9480f" stroke-width="2" stroke-dasharray="8 6"/>
+      <text x="${W - m.r - 4}" y="${ay - 6}" text-anchor="end" font-size="13" font-weight="700" fill="#d9480f">avg ${avg.toFixed(1)}%</text></svg>`;
+  }
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  let cur = null;
+  function plot(data, title) {
+    cur = { data, title };
     $("mtitle").textContent = "Chart: " + title;
-    $("plot").innerHTML =
-      `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Percentage over time">${g}
-       <polygon points="${area}" fill="#17a2b8" opacity=".15"/>
-       <polyline points="${pts}" fill="none" stroke="#17a2b8" stroke-width="2.5" stroke-linejoin="round"/></svg>`;
+    $("plot").innerHTML = chartSVG(data, title, false);
     $("modal").showModal();
   }
+
+  // Export the current chart (with title and average) as a PNG image
+  $("exportPng").onclick = () => {
+    if (!cur) return;
+    const img = new Image(), scale = 2;
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      c.width = img.width * scale; c.height = img.height * scale;
+      const ctx = c.getContext("2d");
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(blob => {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = (cur.title.replace(/[^\w\-]+/g, "_") || "chart") + ".png";
+        a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      }, "image/png");
+    };
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(chartSVG(cur.data, cur.title, true));
+  };
   $("chart").onclick = () => plot(samples, name || $("name").value.trim() || "Untitled");
   $("mclose").onclick = () => $("modal").close();
   $("modal").addEventListener("click", e => { if (e.target === $("modal")) $("modal").close(); });
