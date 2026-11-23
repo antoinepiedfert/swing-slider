@@ -45,6 +45,8 @@
   svg { width:100%; height:auto; display:block; }
   svg text { fill:var(--muted); font-size:12px; }
   .tip { color:var(--muted); font-size:.9rem; margin-top:.5rem; }
+  .credit { text-align:center; color:var(--muted); font-size:.85rem; padding:.5rem 0 1.5rem; }
+  .credit b { color:var(--fg); }
   /* Mobile: vertical slider (100% at top, 0% at bottom) */
   .end { display:none; }
   @media all {
@@ -88,6 +90,7 @@
     <div class="tip">While recording, move the slider: the value is sampled 10 times per second.</div>
   </div>
   <div class="card" id="history" hidden><h2>History</h2><div id="histList"></div></div>
+  <footer class="credit">A creation by <b>Antoine Piedfert</b></footer>
 </main>
 
 <dialog id="modal">
