@@ -60,6 +60,17 @@
     html.m input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:var(--th); height:calc(var(--t) + 14px); margin-top:-7px; border-radius:14px; background:#fff; border:3px solid var(--accent); box-shadow:0 2px 8px rgba(0,0,0,.3); }
     html.m input[type=range]::-moz-range-thumb { width:calc(var(--th) - 6px); height:calc(var(--t) + 8px); border-radius:14px; background:#fff; border:3px solid var(--accent); box-shadow:0 2px 8px rgba(0,0,0,.3); }
     html.m .scale { flex-direction:column-reverse; height:100%; }
+    /* Fill the whole viewport height: the card stretches and the slider takes the leftover space */
+    html.m body { min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; }
+    html.m main { flex:1; width:100%; display:flex; flex-direction:column; }
+    html.m #recorder { flex:1; display:flex; flex-direction:column; }
+    html.m .sl { flex:1 1 0; height:auto; min-height:160px; }
+    /* compact the rest of the card so the slider gets the room */
+    html.m main { padding:.5rem; } html.m .card { margin-bottom:.5rem; padding:.7rem; }
+    html.m .big { font-size:3rem; margin:.2rem 0; } html.m .timer { margin-bottom:.3rem; }
+    html.m .end { margin:.3rem 0; } html.m .status { margin-bottom:.2rem; }
+    html.m .acts { flex-wrap:nowrap; margin-top:.5rem !important; } html.m .acts > .btn { flex:1 1 0; min-width:0; padding:.6rem .2rem; font-size:.85rem; }
+    html.m .tip { font-size:.8rem; margin-top:.3rem; }
   }
 </style>
 </head>
@@ -81,7 +92,7 @@
       <div class="scale"><span>0%</span><span>50%</span><span>100%</span></div>
     </div>
     <div class="end bottom">It doesn't swing</div>
-    <div class="row" style="margin-top:1rem">
+    <div class="row acts" style="margin-top:1rem">
       <button class="btn start" id="start">Start</button>
       <button class="btn stop" id="stop" disabled>Stop</button>
       <button class="btn reset" id="reset" disabled>Reset</button>
@@ -138,6 +149,11 @@
     samples.push({ t: Math.round(t), v: +$("slider").value });
     $("timer").textContent = fmt(t);
   }
+
+  // Mobile: size the vertical slider to the space left by the layout (--h drives its length)
+  const sl = document.querySelector(".sl");
+  const fit = () => { if (document.documentElement.classList.contains("m")) sl.style.setProperty("--h", sl.clientHeight + "px"); };
+  new ResizeObserver(fit).observe(sl); addEventListener("resize", fit);
 
   const paint = () => { $("val").textContent = $("slider").value; $("slider").style.setProperty("--p", $("slider").value / 100); };
   $("slider").addEventListener("input", paint); paint();
