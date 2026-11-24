@@ -15,6 +15,7 @@
   :root { color-scheme: light; } :root[data-theme="dark"] { color-scheme: dark; }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; } }
   * { box-sizing: border-box; }
+  html, body { overscroll-behavior-y: none; }
   body { margin:0; font-family:Raleway,system-ui,sans-serif; background:var(--bg); color:var(--fg); }
   nav { background:var(--card); border-bottom:1px solid var(--line); padding:.8rem 1rem; display:flex; justify-content:space-between; align-items:center; }
   nav b { font-size:1.25rem; }
