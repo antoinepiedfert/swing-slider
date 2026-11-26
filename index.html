@@ -27,6 +27,9 @@
   .row > * { flex:1 1 140px; }
   input[type=text] { flex:3 1 200px; padding:.5rem; border:1px solid var(--line); border-radius:4px; background:var(--bg); color:var(--fg); font:inherit; }
   button.btn { padding:.7rem; border:0; border-radius:4px; font:inherit; font-weight:700; color:#fff; cursor:pointer; }
+  button.btn { position:relative; overflow:hidden; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; touch-action:manipulation; }
+  button.btn.hold::after { content:""; position:absolute; inset:0 auto 0 0; width:0; background:rgba(255,255,255,.4); pointer-events:none; }
+  button.btn.hold.holding::after { width:100%; transition:width var(--hold,1s) linear; }
   button.btn:disabled { opacity:.45; cursor:not-allowed; }
   .start { background:var(--ok); } .stop, .reset { background:var(--danger); } .chart { background:var(--accent); } .set { background:#007bff; }
   .big { font-size:4rem; font-weight:700; text-align:center; line-height:1; margin:.5rem 0; font-variant-numeric:tabular-nums; }
@@ -78,7 +81,7 @@
     html.m main { padding:.5rem; } html.m .card { margin-bottom:.5rem; padding:.7rem; }
     html.m .big { font-size:3rem; margin:.2rem 0; } html.m .timer { margin-bottom:.3rem; }
     html.m .end { margin:.3rem 0; } html.m .status { margin-bottom:.2rem; }
-    html.m .acts { flex-wrap:nowrap; margin-top:.5rem !important; } html.m .acts > .btn { flex:1 1 0; min-width:0; padding:.6rem .2rem; font-size:.85rem; }
+    html.m .acts { flex-wrap:nowrap; margin-bottom:.4rem !important; } html.m .acts > .btn { flex:1 1 0; min-width:0; padding:.6rem .2rem; font-size:.85rem; }
     html.m .tip { font-size:.8rem; margin-top:.3rem; }
   }
 </style>
@@ -87,7 +90,13 @@
 <nav><b>Does It Swing?</b><span><button id="themeBtn" aria-label="Toggle light/dark theme" title="Toggle light/dark theme">◐</button> <button id="histBtn">History</button></span></nav>
 <main>
   <div class="card" id="recorder">
-    <div class="row" style="margin-bottom:1rem">
+    <div class="row acts" style="margin-bottom:.5rem">
+      <button class="btn start" id="start">Start</button>
+      <button class="btn stop hold" id="stop" disabled>Hold to stop</button>
+      <button class="btn reset" id="reset" disabled>Reset</button>
+      <button class="btn chart" id="chart" disabled>Show chart</button>
+    </div>
+    <div class="row" style="margin-bottom:.5rem">
       <input type="text" id="name" placeholder="Recording name" aria-label="Recording name">
       <button class="btn set" id="setName">Set name</button>
     </div>
@@ -101,12 +110,6 @@
       <div class="scale"><span>0%</span><span>50%</span><span>100%</span></div>
     </div>
     <div class="end bottom">It doesn't swing</div>
-    <div class="row acts" style="margin-top:1rem">
-      <button class="btn start" id="start">Start</button>
-      <button class="btn stop" id="stop" disabled>Stop</button>
-      <button class="btn reset" id="reset" disabled>Reset</button>
-      <button class="btn chart" id="chart" disabled>Show chart</button>
-    </div>
     <div class="tip">While recording, move the slider: the value is sampled 10 times per second.</div>
   </div>
   <div class="card" id="history" hidden><h2>History</h2><div id="histList"></div></div>
@@ -126,7 +129,7 @@
   const KEY = "swing-slider-history";
   let state = "idle";           // idle | recording | stopped
   let samples = [];             // [{t: ms, v: 0..100}]
-  let t0 = 0, tick = null, name = "";
+  let t0 = 0, tick = null, name = "", curId = null;
 
   const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; } };
   const save = list => { try { localStorage.setItem(KEY, JSON.stringify(list)); } catch {} };
@@ -167,20 +170,55 @@
   const paint = () => { $("val").textContent = $("slider").value; $("slider").style.setProperty("--p", $("slider").value / 100); };
   $("slider").addEventListener("input", paint); paint();
 
-  $("start").onclick = () => {
-    samples = []; t0 = performance.now(); state = "recording";
+  $("start").onclick = () => { if (guarded()) return; buzz(40);
+    if (state === "stopped" && samples.length) t0 = performance.now() - samples[samples.length - 1].t; // resume the chrono
+    else { samples = []; curId = null; t0 = performance.now(); }
+    state = "recording";
     sample(); tick = setInterval(sample, 100); ui();
   };
-  $("stop").onclick = () => {
+  // Accidental-tap protection: buttons are ignored while the slider is touched (+ a grace delay),
+  // and Stop must be held. Haptic feedback confirms actions without looking at the screen.
+  const HOLD_MS = 1000, GRACE_MS = 800;
+  let sliderDown = false, sliderUp = 0, holdTimer = null, holdBtn = null;
+  const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch {} };
+  const guarded = () => sliderDown || performance.now() - sliderUp < GRACE_MS;
+  const cancelHold = () => { clearTimeout(holdTimer); holdTimer = null; if (holdBtn) holdBtn.classList.remove("holding"); holdBtn = null; };
+  $("slider").addEventListener("pointerdown", () => { sliderDown = true; cancelHold(); });
+  const release = () => { if (sliderDown) { sliderDown = false; sliderUp = performance.now(); } };
+  addEventListener("pointerup", release); addEventListener("pointercancel", release);
+
+  function holdToRun(btn, fn) {
+    btn.style.setProperty("--hold", HOLD_MS + "ms");
+    btn.addEventListener("pointerdown", e => {
+      if (btn.disabled || guarded()) return;
+      e.preventDefault(); cancelHold(); holdBtn = btn;
+      void btn.offsetWidth; btn.classList.add("holding"); buzz(15);
+      holdTimer = setTimeout(() => { cancelHold(); buzz([60, 40, 60]); fn(true); }, HOLD_MS);
+    });
+    ["pointerup", "pointerleave", "pointercancel"].forEach(ev => btn.addEventListener(ev, cancelHold));
+    btn.addEventListener("contextmenu", e => e.preventDefault());
+    btn.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && !e.repeat && !btn.disabled) { e.preventDefault(); fn(false); } });
+  }
+  const guardClick = fn => () => { if (guarded()) return; buzz(40); fn(); };
+
+  const doStop = held => {
     clearInterval(tick); sample(); state = "stopped";
+    if (held) {   // drop the hold itself: end the recording when the finger touched Stop
+      const cut = samples[samples.length - 1].t - HOLD_MS;
+      const kept = samples.filter(p => p.t <= cut);
+      if (kept.length) { kept.push({ t: Math.round(cut), v: kept[kept.length - 1].v }); samples = kept; $("timer").textContent = fmt(cut); }
+    }
     const list = load();
     name = $("name").value.trim() || "Untitled";
-    list.unshift({ id: Date.now(), name, date: new Date().toISOString(), samples });
+    const i = curId ? list.findIndex(r => r.id === curId) : -1;
+    if (i >= 0) { list[i].samples = samples; list[i].name = name; }   // resumed recording: update, don't duplicate
+    else { curId = Date.now(); list.unshift({ id: curId, name, date: new Date().toISOString(), samples }); }
     save(list.slice(0, 50)); renderHistory(); ui();
   };
-  $("reset").onclick = () => {
-    samples = []; state = "idle"; $("timer").textContent = "00:00.0"; ui();
-  };
+  holdToRun($("stop"), doStop);
+  $("reset").onclick = guardClick(() => {
+    samples = []; curId = null; state = "idle"; $("timer").textContent = "00:00.0"; ui();
+  });
   $("setName").onclick = () => { name = $("name").value.trim(); $("name").blur(); };
 
   // --- Chart (SVG, step plot) ---
